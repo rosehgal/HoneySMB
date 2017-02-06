@@ -1,26 +1,4 @@
-# Copyright (c) 2003-2016 CORE Security Technologies
-#
-# This software is provided under under a slightly modified version
-# of the Apache Software License. See the accompanying LICENSE file
-# for more information.
-#
-# Author: Alberto Solino (@agsolino)
-#
-# TODO:
-# [-] Functions should return NT error codes
-# [-] Handling errors in all situations, right now it's just raising exceptions. 
-# [*] Standard authentication support
-# [ ] Organize the connectionData stuff
-# [*] Add capability to send a bad user ID if the user is not authenticated,
-#     right now you can ask for any command without actually being authenticated
-# [ ] PATH TRAVERSALS EVERYWHERE.. BE WARNED!
-# [ ] Check the credentials.. now we're just letting everybody to log in.
-# [ ] Check error situation (now many places assume the right data is coming)
-# [ ] Implement IPC to the main process so the connectionData is on a single place
-# [ ] Hence.. implement locking
-# estamos en la B
-
-from __future__ import with_statement
+#!/usr/bin/python2.7
 import calendar
 import socket
 import time
@@ -40,12 +18,13 @@ import random
 import shutil
 import string
 from binascii import unhexlify, hexlify
+from passlib.hash import lmhash,nthash
 
 # For signing
-from impacket import smb, nmb, ntlm, uuid, LOG
-from impacket import smb3structs as smb2
-from impacket.spnego import SPNEGO_NegTokenInit, TypesMech, MechTypes, SPNEGO_NegTokenResp, ASN1_AID, ASN1_SUPPORTED_MECH
-from impacket.nt_errors import STATUS_NO_MORE_FILES, STATUS_NETWORK_NAME_DELETED, STATUS_INVALID_PARAMETER, \
+import  smb, nmb, ntlm, uuid, LOG
+import smb3structs as smb2
+from spnego import SPNEGO_NegTokenInit, TypesMech, MechTypes, SPNEGO_NegTokenResp, ASN1_AID, ASN1_SUPPORTED_MECH
+from nt_errors import STATUS_NO_MORE_FILES, STATUS_NETWORK_NAME_DELETED, STATUS_INVALID_PARAMETER, \
     STATUS_FILE_CLOSED, STATUS_MORE_PROCESSING_REQUIRED, STATUS_OBJECT_PATH_NOT_FOUND, STATUS_DIRECTORY_NOT_EMPTY, \
     STATUS_FILE_IS_A_DIRECTORY, STATUS_NOT_IMPLEMENTED, STATUS_INVALID_HANDLE, STATUS_OBJECT_NAME_COLLISION, \
     STATUS_NO_SUCH_FILE, STATUS_CANCELLED, STATUS_OBJECT_NAME_NOT_FOUND, STATUS_SUCCESS, STATUS_ACCESS_DENIED, \
@@ -846,6 +825,8 @@ class SMBCommands:
         connData = smbServer.getConnectionData(connId)
 
         respSMBCommand = smb.SMBCommand(recvPacket['Command'])
+        #TODO:look here for the session logging
+        print(respSMBCommand.data)
 
         transParameters= smb.SMBTransaction_Parameters(SMBCommand['Parameters'])
 
@@ -2329,6 +2310,8 @@ class SMBCommands:
                 # AUTHENTICATE_MESSAGE, here we deal with authentication
                 authenticateMessage = ntlm.NTLMAuthChallengeResponse()
                 authenticateMessage.fromString(token)
+
+
                 smbServer.log("AUTHENTICATE_MESSAGE (%s\\%s,%s)" % (authenticateMessage['domain_name'], authenticateMessage['user_name'], authenticateMessage['host_name']))
                 # TODO: Check the credentials! Now granting permissions
 
@@ -3559,7 +3542,6 @@ class SMBSERVERHandler(SocketServer.BaseRequestHandler):
                 break
 
     def finish(self):
-        # Thread/process is dying, we should tell the main SMB thread to remove all this thread data
         self.__SMB.log("Closing down connection (%s,%d)" % (self.__ip, self.__port))
         self.__SMB.removeConnection(self.__connId)
         return SocketServer.BaseRequestHandler.finish(self)
@@ -3831,6 +3813,7 @@ smb.SMB.TRANS_TRANSACT_NMPIPE          :self.__smbTransHandler.transactNamedPipe
         if self.__smbCommands.has_key(smbCommand):
            del(self.__smbCommands[smbCommand])
 
+    #TODO: check this fucntion
     def hookSmbCommand(self, smbCommand, callback):
         # Here we should add to self.__smbCommands
         # If you call this function, callback will replace 
@@ -4146,6 +4129,8 @@ smb.SMB.TRANS_TRANSACT_NMPIPE          :self.__smbTransHandler.transactNamedPipe
             self.__SMB2Support = False
 
         if self.__logFile != 'None':
+            print ("[*] using the logfile %s" % self.__logFile)
+
             logging.basicConfig(filename = self.__logFile, 
                              level = logging.DEBUG, 
                              format="%(asctime)s: %(levelname)s: %(message)s", 
@@ -4153,13 +4138,16 @@ smb.SMB.TRANS_TRANSACT_NMPIPE          :self.__smbTransHandler.transactNamedPipe
         self.__log        = LOG
 
         # Process the credentials
+        print "Credentials File parsed"
         credentials_fname = self.__serverConfig.get('global','credentials_file')
         if credentials_fname is not "":
             cred = open(credentials_fname)
             line = cred.readline()
             while line:
-                name, domain, lmhash, nthash = line.split(':')
-                self.__credentials[name] = (domain, lmhash, nthash.strip('\r\n'))
+                name, domain, password= line.split(':')
+                lmh = lmhash.hash(password)
+                nth = nthash.hash(password)
+                self.__credentials[name] = (domain, lmh, nth.strip('\r\n'))
                 line = cred.readline()
             cred.close()
         self.log('Config file parsed')     
@@ -4171,246 +4159,143 @@ PIPE_FILE_DESCRIPTOR = -2
 ######################################################################
 # HELPER CLASSES
 ######################################################################
+#
+# from impacket.dcerpc.v5.rpcrt import DCERPCServer
+# from impacket.dcerpc.v5.dtypes import NULL
+# from impacket.dcerpc.v5.srvs import NetrShareEnum, NetrShareEnumResponse, SHARE_INFO_1, NetrServerGetInfo, NetrServerGetInfoResponse, NetrShareGetInfo, NetrShareGetInfoResponse
+# from impacket.dcerpc.v5.wkst import NetrWkstaGetInfo, NetrWkstaGetInfoResponse
+# from impacket.system_errors import ERROR_INVALID_LEVEL
+#
+# class WKSTServer(DCERPCServer):
+#     def __init__(self):
+#         DCERPCServer.__init__(self)
+#         self.wkssvcCallBacks = {
+#             0: self.NetrWkstaGetInfo,
+#         }
+#         self.addCallbacks(('6BFFD098-A112-3610-9833-46C3F87E345A', '1.0'),'\\PIPE\\wkssvc', self.wkssvcCallBacks)
+#
+#     def NetrWkstaGetInfo(self,data):
+#         request = NetrWkstaGetInfo(data)
+#         self.log("NetrWkstaGetInfo Level: %d" % request['Level'])
+#
+#         answer = NetrWkstaGetInfoResponse()
+#
+#         if request['Level'] not in (100, 101):
+#             answer['ErrorCode'] = ERROR_INVALID_LEVEL
+#             return answer
+#
+#         answer['WkstaInfo']['tag'] = request['Level']
+#
+#         if request['Level'] == 100:
+#             # Windows. Decimal value 500.
+#             answer['WkstaInfo']['WkstaInfo100']['wki100_platform_id'] = 0x000001F4
+#             answer['WkstaInfo']['WkstaInfo100']['wki100_computername'] = NULL
+#             answer['WkstaInfo']['WkstaInfo100']['wki100_langroup'] = NULL
+#             answer['WkstaInfo']['WkstaInfo100']['wki100_ver_major'] = 5
+#             answer['WkstaInfo']['WkstaInfo100']['wki100_ver_minor'] = 0
+#         else:
+#             # Windows. Decimal value 500.
+#             answer['WkstaInfo']['WkstaInfo101']['wki101_platform_id'] = 0x000001F4
+#             answer['WkstaInfo']['WkstaInfo101']['wki101_computername'] = NULL
+#             answer['WkstaInfo']['WkstaInfo101']['wki101_langroup'] = NULL
+#             answer['WkstaInfo']['WkstaInfo101']['wki101_ver_major'] = 5
+#             answer['WkstaInfo']['WkstaInfo101']['wki101_ver_minor'] = 0
+#             answer['WkstaInfo']['WkstaInfo101']['wki101_lanroot'] = NULL
+#
+#         return answer
 
-from impacket.dcerpc.v5.rpcrt import DCERPCServer
-from impacket.dcerpc.v5.dtypes import NULL
-from impacket.dcerpc.v5.srvs import NetrShareEnum, NetrShareEnumResponse, SHARE_INFO_1, NetrServerGetInfo, NetrServerGetInfoResponse, NetrShareGetInfo, NetrShareGetInfoResponse
-from impacket.dcerpc.v5.wkst import NetrWkstaGetInfo, NetrWkstaGetInfoResponse
-from impacket.system_errors import ERROR_INVALID_LEVEL
-
-class WKSTServer(DCERPCServer):
-    def __init__(self):
-        DCERPCServer.__init__(self)
-        self.wkssvcCallBacks = {
-            0: self.NetrWkstaGetInfo,
-        }
-        self.addCallbacks(('6BFFD098-A112-3610-9833-46C3F87E345A', '1.0'),'\\PIPE\\wkssvc', self.wkssvcCallBacks)
-
-    def NetrWkstaGetInfo(self,data):
-        request = NetrWkstaGetInfo(data)
-        self.log("NetrWkstaGetInfo Level: %d" % request['Level'])
-
-        answer = NetrWkstaGetInfoResponse()
-
-        if request['Level'] not in (100, 101):
-            answer['ErrorCode'] = ERROR_INVALID_LEVEL
-            return answer
-
-        answer['WkstaInfo']['tag'] = request['Level']
-
-        if request['Level'] == 100:
-            # Windows. Decimal value 500.
-            answer['WkstaInfo']['WkstaInfo100']['wki100_platform_id'] = 0x000001F4
-            answer['WkstaInfo']['WkstaInfo100']['wki100_computername'] = NULL
-            answer['WkstaInfo']['WkstaInfo100']['wki100_langroup'] = NULL
-            answer['WkstaInfo']['WkstaInfo100']['wki100_ver_major'] = 5
-            answer['WkstaInfo']['WkstaInfo100']['wki100_ver_minor'] = 0
-        else:
-            # Windows. Decimal value 500.
-            answer['WkstaInfo']['WkstaInfo101']['wki101_platform_id'] = 0x000001F4
-            answer['WkstaInfo']['WkstaInfo101']['wki101_computername'] = NULL
-            answer['WkstaInfo']['WkstaInfo101']['wki101_langroup'] = NULL
-            answer['WkstaInfo']['WkstaInfo101']['wki101_ver_major'] = 5
-            answer['WkstaInfo']['WkstaInfo101']['wki101_ver_minor'] = 0
-            answer['WkstaInfo']['WkstaInfo101']['wki101_lanroot'] = NULL
-
-        return answer
-
-class SRVSServer(DCERPCServer):
-    def __init__(self):
-        DCERPCServer.__init__(self)
-
-        self._shares = {}
-        self.__serverConfig = None
-        self.__logFile = None
-
-        self.srvsvcCallBacks = {
-            15: self.NetrShareEnum,
-            16: self.NetrShareGetInfo,
-            21: self.NetrServerGetInfo,
-        }
-
-        self.addCallbacks(('4B324FC8-1670-01D3-1278-5A47BF6EE188', '3.0'),'\\PIPE\\srvsvc', self.srvsvcCallBacks)
-
-    def setServerConfig(self, config):
-        self.__serverConfig = config
-
-    def processConfigFile(self, configFile=None):
-       if configFile is not None:
-           self.__serverConfig = ConfigParser.ConfigParser()
-           self.__serverConfig.read(configFile)
-       sections = self.__serverConfig.sections()
-       # Let's check the log file
-       self.__logFile      = self.__serverConfig.get('global','log_file')
-       if self.__logFile != 'None':
-            logging.basicConfig(filename = self.__logFile, 
-                             level = logging.DEBUG, 
-                             format="%(asctime)s: %(levelname)s: %(message)s", 
-                             datefmt = '%m/%d/%Y %I:%M:%S %p')
-
-       # Remove the global one
-       del(sections[sections.index('global')])
-       self._shares = {}
-       for i in sections:
-           self._shares[i] = dict(self.__serverConfig.items(i))
-
-    def NetrShareGetInfo(self,data):
-       request = NetrShareGetInfo(data)
-       self.log("NetrGetShareInfo Level: %d" % request['Level'])
-
-       s = request['NetName'][:-1].upper()
-       answer = NetrShareGetInfoResponse()
-       if self._shares.has_key(s):
-           share  = self._shares[s]
-
-           answer['InfoStruct']['tag'] = 1
-           answer['InfoStruct']['ShareInfo1']['shi1_netname']= s+'\x00'
-           answer['InfoStruct']['ShareInfo1']['shi1_type']   = share['share type']
-           answer['InfoStruct']['ShareInfo1']['shi1_remark'] = share['comment']+'\x00' 
-           answer['ErrorCode'] = 0
-       else:
-           answer['InfoStruct']['tag'] = 1
-           answer['InfoStruct']['ShareInfo1']= NULL
-           answer['ErrorCode'] = 0x0906 #WERR_NET_NAME_NOT_FOUND
-
-       return answer
-
-    def NetrServerGetInfo(self,data):
-       request = NetrServerGetInfo(data)
-       self.log("NetrServerGetInfo Level: %d" % request['Level'])
-       answer = NetrServerGetInfoResponse()
-       answer['InfoStruct']['tag'] = 101
-       # PLATFORM_ID_NT = 500
-       answer['InfoStruct']['ServerInfo101']['sv101_platform_id'] = 500
-       answer['InfoStruct']['ServerInfo101']['sv101_name'] = request['ServerName']
-       # Windows 7 = 6.1
-       answer['InfoStruct']['ServerInfo101']['sv101_version_major'] = 6
-       answer['InfoStruct']['ServerInfo101']['sv101_version_minor'] = 1
-       # Workstation = 1
-       answer['InfoStruct']['ServerInfo101']['sv101_type'] = 1
-       answer['InfoStruct']['ServerInfo101']['sv101_comment'] = NULL
-       answer['ErrorCode'] = 0
-       return answer
-
-    def NetrShareEnum(self, data):
-       request = NetrShareEnum(data)
-       self.log("NetrShareEnum Level: %d" % request['InfoStruct']['Level'])
-       shareEnum = NetrShareEnumResponse()
-       shareEnum['InfoStruct']['Level'] = 1
-       shareEnum['InfoStruct']['ShareInfo']['tag'] = 1
-       shareEnum['TotalEntries'] = len(self._shares)
-       shareEnum['InfoStruct']['ShareInfo']['Level1']['EntriesRead'] = len(self._shares)
-       shareEnum['ErrorCode'] = 0
-
-       for i in self._shares:
-           shareInfo = SHARE_INFO_1()
-           shareInfo['shi1_netname'] = i+'\x00'
-           shareInfo['shi1_type'] = self._shares[i]['share type']
-           shareInfo['shi1_remark'] = self._shares[i]['comment']+'\x00'
-           shareEnum['InfoStruct']['ShareInfo']['Level1']['Buffer'].append(shareInfo)
-
-       return shareEnum
-
-class SimpleSMBServer:
-    """
-    SimpleSMBServer class - Implements a simple, customizable SMB Server
-
-    :param string listenAddress: the address you want the server to listen on
-    :param integer listenPort: the port number you want the server to listen on
-    :param string configFile: a file with all the servers' configuration. If no file specified, this class will create the basic parameters needed to run. You will need to add your shares manually tho. See addShare() method
-    """
-    def __init__(self, listenAddress = '0.0.0.0', listenPort=445, configFile=''):
-        if configFile != '':
-            self.__server = SMBSERVER((listenAddress,listenPort))
-            self.__server.processConfigFile(configFile)
-            self.__smbConfig = None
-        else:
-            # Here we write a mini config for the server
-            self.__smbConfig = ConfigParser.ConfigParser()
-            self.__smbConfig.add_section('global')
-            self.__smbConfig.set('global','server_name',''.join([random.choice(string.letters) for _ in range(8)]))
-            self.__smbConfig.set('global','server_os',''.join([random.choice(string.letters) for _ in range(8)])
-)
-            self.__smbConfig.set('global','server_domain',''.join([random.choice(string.letters) for _ in range(8)])
-)
-            self.__smbConfig.set('global','log_file','None')
-            self.__smbConfig.set('global','rpc_apis','yes')
-            self.__smbConfig.set('global','credentials_file','')
-            self.__smbConfig.set('global', 'challenge', "A"*8)
-
-            # IPC always needed
-            self.__smbConfig.add_section('IPC$')
-            self.__smbConfig.set('IPC$','comment','')
-            self.__smbConfig.set('IPC$','read only','yes')
-            self.__smbConfig.set('IPC$','share type','3')
-            self.__smbConfig.set('IPC$','path','')
-            self.__server = SMBSERVER((listenAddress,listenPort), config_parser = self.__smbConfig)
-            self.__server.processConfigFile()
-
-        # Now we have to register the MS-SRVS server. This specially important for 
-        # Windows 7+ and Mavericks clients since they WONT (specially OSX) 
-        # ask for shares using MS-RAP.
-
-        self.__srvsServer = SRVSServer()
-        self.__srvsServer.daemon = True
-        self.__wkstServer = WKSTServer()
-        self.__wkstServer.daemon = True
-        self.__server.registerNamedPipe('srvsvc',('127.0.0.1',self.__srvsServer.getListenPort()))
-        self.__server.registerNamedPipe('wkssvc',('127.0.0.1',self.__wkstServer.getListenPort()))
-
-    def start(self):
-        self.__srvsServer.start()
-        self.__wkstServer.start()
-        self.__server.serve_forever()
-
-    def registerNamedPipe(self, pipeName, address):
-        return self.__server.registerNamedPipe(pipeName, address)
-
-    def unregisterNamedPipe(self, pipeName):
-        return self.__server.unregisterNamedPipe(pipeName)
-
-    def getRegisteredNamedPipes(self):
-        return self.__server.getRegisteredNamedPipes()
-
-    def addShare(self, shareName, sharePath, shareComment='', shareType = 0, readOnly = 'no'):
-        self.__smbConfig.add_section(shareName)
-        self.__smbConfig.set(shareName, 'comment', shareComment)
-        self.__smbConfig.set(shareName, 'read only', readOnly)
-        self.__smbConfig.set(shareName, 'share type', shareType)
-        self.__smbConfig.set(shareName, 'path', sharePath)
-        self.__server.setServerConfig(self.__smbConfig)
-        self.__srvsServer.setServerConfig(self.__smbConfig)
-        self.__server.processConfigFile()
-        self.__srvsServer.processConfigFile()
-
-    def removeShare(self, shareName):
-        self.__smbConfig.remove_section(shareName)
-        self.__server.setServerConfig(self.__smbConfig)
-        self.__srvsServer.setServerConfig(self.__smbConfig)
-        self.__server.processConfigFile()
-        self.__srvsServer.processConfigFile()
-
-    def setSMBChallenge(self, challenge):
-        if challenge != '':
-            self.__smbConfig.set('global', 'challenge', unhexlify(challenge))
-            self.__server.setServerConfig(self.__smbConfig)
-            self.__server.processConfigFile()
-        
-    def setLogFile(self, logFile):
-        self.__smbConfig.set('global','log_file',logFile)
-        self.__server.setServerConfig(self.__smbConfig)
-        self.__server.processConfigFile()
-
-    def setCredentialsFile(self, logFile):
-        self.__smbConfig.set('global','credentials_file',logFile)
-        self.__server.setServerConfig(self.__smbConfig)
-        self.__server.processConfigFile()
-
-    def setSMB2Support(self, value):
-        if value is True:
-            self.__smbConfig.set("global", "SMB2Support", "True")
-        else:
-            self.__smbConfig.set("global", "SMB2Support", "False")
-        self.__server.setServerConfig(self.__smbConfig)
-        self.__server.processConfigFile()
-
+# class SRVSServer(DCERPCServer):
+#     def __init__(self):
+#         DCERPCServer.__init__(self)
+#
+#         self._shares = {}
+#         self.__serverConfig = None
+#         self.__logFile = None
+#
+#         self.srvsvcCallBacks = {
+#             15: self.NetrShareEnum,
+#             16: self.NetrShareGetInfo,
+#             21: self.NetrServerGetInfo,
+#         }
+#
+#         self.addCallbacks(('4B324FC8-1670-01D3-1278-5A47BF6EE188', '3.0'),'\\PIPE\\srvsvc', self.srvsvcCallBacks)
+#
+#     def setServerConfig(self, config):
+#         self.__serverConfig = config
+#
+#     def processConfigFile(self, configFile=None):
+#        if configFile is not None:
+#            self.__serverConfig = ConfigParser.ConfigParser()
+#            self.__serverConfig.read(configFile)
+#        sections = self.__serverConfig.sections()
+#        # Let's check the log file
+#        self.__logFile      = self.__serverConfig.get('global','log_file')
+#        if self.__logFile != 'None':
+#             logging.basicConfig(filename = self.__logFile,
+#                              level = logging.DEBUG,
+#                              format="%(asctime)s: %(levelname)s: %(message)s",
+#                              datefmt = '%m/%d/%Y %I:%M:%S %p')
+#
+#        # Remove the global one
+#        del(sections[sections.index('global')])
+#        self._shares = {}
+#        for i in sections:
+#            self._shares[i] = dict(self.__serverConfig.items(i))
+#
+#     def NetrShareGetInfo(self,data):
+#        request = NetrShareGetInfo(data)
+#        self.log("NetrGetShareInfo Level: %d" % request['Level'])
+#
+#        s = request['NetName'][:-1].upper()
+#        answer = NetrShareGetInfoResponse()
+#        if self._shares.has_key(s):
+#            share  = self._shares[s]
+#
+#            answer['InfoStruct']['tag'] = 1
+#            answer['InfoStruct']['ShareInfo1']['shi1_netname']= s+'\x00'
+#            answer['InfoStruct']['ShareInfo1']['shi1_type']   = share['share type']
+#            answer['InfoStruct']['ShareInfo1']['shi1_remark'] = share['comment']+'\x00'
+#            answer['ErrorCode'] = 0
+#        else:
+#            answer['InfoStruct']['tag'] = 1
+#            answer['InfoStruct']['ShareInfo1']= NULL
+#            answer['ErrorCode'] = 0x0906 #WERR_NET_NAME_NOT_FOUND
+#
+#        return answer
+#
+#     def NetrServerGetInfo(self,data):
+#        request = NetrServerGetInfo(data)
+#        self.log("NetrServerGetInfo Level: %d" % request['Level'])
+#        answer = NetrServerGetInfoResponse()
+#        answer['InfoStruct']['tag'] = 101
+#        # PLATFORM_ID_NT = 500
+#        answer['InfoStruct']['ServerInfo101']['sv101_platform_id'] = 500
+#        answer['InfoStruct']['ServerInfo101']['sv101_name'] = request['ServerName']
+#        # Windows 7 = 6.1
+#        answer['InfoStruct']['ServerInfo101']['sv101_version_major'] = 6
+#        answer['InfoStruct']['ServerInfo101']['sv101_version_minor'] = 1
+#        # Workstation = 1
+#        answer['InfoStruct']['ServerInfo101']['sv101_type'] = 1
+#        answer['InfoStruct']['ServerInfo101']['sv101_comment'] = NULL
+#        answer['ErrorCode'] = 0
+#        return answer
+#
+#     def NetrShareEnum(self, data):
+#        request = NetrShareEnum(data)
+#        self.log("NetrShareEnum Level: %d" % request['InfoStruct']['Level'])
+#        shareEnum = NetrShareEnumResponse()
+#        shareEnum['InfoStruct']['Level'] = 1
+#        shareEnum['InfoStruct']['ShareInfo']['tag'] = 1
+#        shareEnum['TotalEntries'] = len(self._shares)
+#        shareEnum['InfoStruct']['ShareInfo']['Level1']['EntriesRead'] = len(self._shares)
+#        shareEnum['ErrorCode'] = 0
+#
+#        for i in self._shares:
+#            shareInfo = SHARE_INFO_1()
+#            shareInfo['shi1_netname'] = i+'\x00'
+#            shareInfo['shi1_type'] = self._shares[i]['share type']
+#            shareInfo['shi1_remark'] = self._shares[i]['comment']+'\x00'
+#            shareEnum['InfoStruct']['ShareInfo']['Level1']['Buffer'].append(shareInfo)
+#
+#        return shareEnum
+#

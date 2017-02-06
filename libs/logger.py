@@ -20,6 +20,6 @@ class SMBFormatter(logging.Formatter):
 
 def init():
     handler = logging.StreamHandler(sys.stdout)
-    handler.setFormatter(ImpacketFormatter())
+    handler.setFormatter(SMBFormatter())
     logging.getLogger().addHandler(handler)
     logging.getLogger().setLevel(logging.INFO)

@@ -47,10 +47,10 @@ import datetime
 from struct import pack, unpack
 from contextlib import contextmanager
 
-from impacket import nmb, ntlm, nt_errors, LOG
-from impacket.structure import Structure
-from impacket.spnego import SPNEGO_NegTokenInit, TypesMech, SPNEGO_NegTokenResp, ASN1_OID, asn1encode, ASN1_AID
-from impacket.krb5.gssapi import KRB5_AP_REQ
+import nmb, ntlm, nt_errors, LOG
+from structure import Structure
+from spnego import SPNEGO_NegTokenInit, TypesMech, SPNEGO_NegTokenResp, ASN1_OID, asn1encode, ASN1_AID
+from gssapi import KRB5_AP_REQ
 
 # For signing
 import hashlib
@@ -735,6 +735,7 @@ class SMBCommand(Structure):
         if data is None:
             self['Parameters'] = ''
             self['Data']       = ''
+        print "Command ----------------",self['Data']
 
 class AsciiOrUnicodeStructure(Structure):
     UnicodeStructure = ()

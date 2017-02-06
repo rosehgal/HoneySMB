@@ -11,6 +11,7 @@
 #   RFC 4757 Partial Implementation
 #   RFC 4121 Partial Implementation
 #   RFC 3962 Partial Implementation
+
 import struct
 
 from Crypto.Hash import HMAC, MD5

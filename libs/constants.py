@@ -1,4 +1,4 @@
-from impacket.dcerpc.v5.enum import Enum
+from enum import Enum
 
 def encodeFlags(flags):
     finalFlags = list()
@@ -30,12 +30,12 @@ class ApplicationTagNumbers(Enum):
     EncASRepPart   = 25
     EncTGSRepPart  = 26
     EncApRepPart   = 27
-    EncKrbPrivPart = 28 
+    EncKrbPrivPart = 28
     EncKrbCredPart = 29
     KRB_ERROR      = 30
 
 class PrincipalNameType(Enum):
-    NT_UNKNOWN        = 0 
+    NT_UNKNOWN        = 0
     NT_PRINCIPAL      = 1
     NT_SRV_INST       = 2
     NT_SRV_HST        = 3
@@ -82,7 +82,7 @@ class PreAuthenticationDataTypes(Enum):
     TD_REQ_SEQ                 = 108
     PA_PAC_REQUEST             = 128
     PA_FOR_USER                = 129
-    PA_FX_COOKIE               = 133 
+    PA_FX_COOKIE               = 133
     PA_FX_FAST                 = 136
     PA_FX_ERROR                = 137
     PA_ENCRYPTED_CHALLENGE     = 138
@@ -117,9 +117,9 @@ class AuthorizationDataType(Enum):
     #Reserved values                    = 9-63
     OSF_DCE                            = 64
     SESAME                             = 65
-    AD_OSF_DCE_PKI_CERTID              = 66 
-    AD_WIN2K_PAC                       = 128 
-    AD_ETYPE_NEGOTIATION               = 129 
+    AD_OSF_DCE_PKI_CERTID              = 66
+    AD_WIN2K_PAC                       = 128
+    AD_ETYPE_NEGOTIATION               = 129
 
 # 7.5.5.  Transited Encoding Types
 class TransitedEncodingTypes(Enum):
@@ -270,7 +270,7 @@ class ErrorCodes(Enum):
     KDC_ERR_REVOCATION_STATUS_UNAVAILABLE = 74  # Reserved for PKINIT
     KDC_ERR_CLIENT_NAME_MISMATCH          = 75  # Reserved for PKINIT
     KDC_ERR_KDC_NAME_MISMATCH             = 76  # Reserved for PKINIT
- 
+
 ERROR_MESSAGES = {
     0  : ('KDC_ERR_NONE', 'No error'),
     1  : ('KDC_ERR_NAME_EXP', 'Client\'s entry in database has expired'),
@@ -341,7 +341,7 @@ ERROR_MESSAGES = {
     75 : ('KDC_ERR_CLIENT_NAME_MISMATCH', 'Reserved for PKINIT'),
     76 : ('KDC_ERR_KDC_NAME_MISMATCH', 'Reserved for PKINIT'),
 }
- 
+
 class TicketFlags(Enum):
     reserved                 = 0
     forwardable              = 1

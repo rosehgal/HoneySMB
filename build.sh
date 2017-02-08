@@ -1,28 +1,41 @@
 #!/bin/bash
+if [ "$EUID" -ne 0 ]
+then
+  echo "[*] Please run as root"
+  exit
+fi
+
 ls smbDockerKeys
 if [ $? -eq 0 ]
 then
   rm smbDockerKeys*
 fi
+
 ssh-keygen -t rsa -f smbDockerKeys
-cat smbDockerKeys.pub >> ~/.ssh/authorized_keys
+#cat smbDockerKeys.pub >> /home/smbuser/.ssh/authorized_keys
 id smbuser
 
 if [ $? -ne 0 ]
 then
   echo "[*] Adding smb user"
-  sudo useradd smbuser
+  useradd -m smbuser
 fi
+
+chmod +r ./smbDockerKeys ./smbDockerKeys.pub
+#chown -R :smbuser /home/smbuser
+#chmod 777 -R /home/smbuser
+#touch /home/smbuser/.ssh/authorized_keys
+#cat smbDockerKeys.pub >> ~/.ssh/authorized_keys
 
 docker -v
 if [ $? -ne 0 ]
 then
-  sudo aptitude install docker.io -y
+  aptitude install docker.io -y
 else
   echo "[*] Docker Already Installed"
 fi
 
-sudo docker build -t smbserver .
+docker build -t smbserver .
 
 if [ $? -ne 0 ]
 then
@@ -30,13 +43,18 @@ then
   exit
 fi
 
-sudo docker run --name SMB -d -p 445:445 -p 139:139 -i smbserver
+docker run --name SMB -d -p 445:445 -p 139:139 -i smbserver
 
 if [ $? -ne 0 ]
 then
   echo "[*] Docker with name SMB already running"
   echo "[*] Stopping SMB and rerunning"
-  sudo docker rm -f SMB
-sudo docker run --name SMB -d -p 445:445 -p 139:139 -i smbserver
+  docker rm -f SMB
+  docker run --name SMB -d -p 445:445 -p 139:139 -i smbserver
 fi
 
+ls /home/smbuser/.ssh
+if [ $? -eq 0 ]
+then rm -rf /home/smbuser/.ssh
+fi
+sudo -H -u smbuser bash -c "mkdir ~/.ssh ; cat smbDockerKeys.pub >> ~/.ssh/authorized_keys"

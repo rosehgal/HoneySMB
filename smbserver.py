@@ -66,11 +66,11 @@ class SimpleSMBServer:
 
 def main():
     smbConfig = ConfigParser.RawConfigParser()
-    smbConfig.read('smb.conf')
+    smbConfig.read('/home/smb/smb.conf')
     smbServer = SimpleSMBServer(configFile=smbConfig)
 
     shareConfig = ConfigParser.RawConfigParser()
-    shareConfig.read("shares.conf")
+    shareConfig.read("/home/smb/shares.conf")
 
     shareNames = [i.strip() for i in shareConfig.get('shareNames', 'share_names').split(',')]
     for shareName in shareNames:

@@ -2,7 +2,8 @@ FROM ubuntu
 MAINTAINER Rohit Sehgal (rsehgal@iitk.ac.in)
 
 RUN apt-get update -y && apt-get install python2.7 -y
-RUN apt-get install openssh-client python tcpdump -y
+RUN apt-get update
+RUN apt-get install openssh-client python tcpdump python-pip -y
 RUN apt-get install iproute -y
 
 RUN mkdir -p /home/smb
@@ -28,6 +29,7 @@ RUN chmod 400 /home/smb/smbDockerKeys
 
 #COPY requirements.txt /home/smb/requirements.txt
 #RUN pip install -r /home/smb/requirements.txt
+RUN pip install pycrypto
 
 COPY smbDrive /home/smb/smbDrive
 RUN chown :smb /home/smb/smbDrive

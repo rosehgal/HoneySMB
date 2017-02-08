@@ -6,10 +6,9 @@ then
 fi
 ssh-keygen -t rsa -f smbDockerKeys
 cat smbDockerKeys.pub >> ~/.ssh/authorized_keys
-
 id smbuser
 
-if [$? -ne 0 ]
+if [ $? -ne 0 ]
 then
   echo "[*] Adding smb user"
   sudo useradd smbuser

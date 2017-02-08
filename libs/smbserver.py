@@ -18,7 +18,7 @@ import random
 import shutil
 import string
 from binascii import unhexlify, hexlify
-from passlib.hash import lmhash,nthash
+#from passlib.hash import lmhash,nthash
 
 # For signing
 import  smb, nmb, ntlm, uuid, LOG
@@ -4145,9 +4145,9 @@ smb.SMB.TRANS_TRANSACT_NMPIPE          :self.__smbTransHandler.transactNamedPipe
             cred = open(credentials_fname)
             line = cred.readline()
             while line:
-                name, domain, password= line.split(':')
-                lmh = lmhash.hash(password)
-                nth = nthash.hash(password)
+                name, domain, lmhash, nthash= line.split(':')
+                #lmh = lmhash.hash(password)
+                #nth = nthash.hash(password)
                 self.__credentials[name] = (domain, lmh, nth.strip('\r\n'))
                 line = cred.readline()
             cred.close()

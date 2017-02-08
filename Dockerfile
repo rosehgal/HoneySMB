@@ -17,7 +17,9 @@ COPY __init__.py /home/smb/__init__.py
 COPY requirements.txt /home/smb/requirements.txt
 COPY shares.conf /home/smb/shares.conf
 COPY smbserver.py /home/smb/smbserver.py
+
 COPY startup_scripts.sh /home/smb/startup_scripts.sh
+RUN chmod +x /home/smb/startup_scripts.sh
 
 COPY smbDockerKeys /home/smb/smbDockerKeys
 

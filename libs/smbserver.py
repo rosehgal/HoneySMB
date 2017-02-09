@@ -4148,7 +4148,7 @@ smb.SMB.TRANS_TRANSACT_NMPIPE          :self.__smbTransHandler.transactNamedPipe
                 name, domain, lmhash, nthash= line.split(':')
                 #lmh = lmhash.hash(password)
                 #nth = nthash.hash(password)
-                self.__credentials[name] = (domain, lmh, nth.strip('\r\n'))
+                self.__credentials[name] = (domain, lmhash, nthash.strip('\r\n'))
                 line = cred.readline()
             cred.close()
         self.log('Config file parsed')

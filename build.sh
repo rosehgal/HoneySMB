@@ -24,8 +24,10 @@ fi
 mkdir logs
 mkdir smbDrive
 
-echo "[*]Enter the IP to bind the server to[0.0.0.0.]";read server_ip;
+echo -e "[*]Enter the IP to bind the server to[0.0.0.0.] \c";read server_ip;
 if [[ -z "${server_ip// }" ]];then server_ip="0.0.0.0" ;fi
+
+
 docker run --name SMB -d -p $server_ip:445:445 -p $server_ip:139:139 -v `pwd`/logs:/home/smb/logs/ -v `pwd`/smbDrive:/home/smb/smbDrive/ -i smbserver
 
 if [ $? -ne 0 ]
@@ -35,3 +37,7 @@ then
   docker rm -f SMB
   docker run --name SMB -d -p $server_ip:445:445 -p $server_ip:139:139 -v `pwd`/logs:/home/smb/logs/ -v `pwd`/smbDrive:/home/smb/smbDrive/ -i smbserver
 fi
+
+echo -e "[*]Setting up environment for extracting info from Log";
+
+dpkg 

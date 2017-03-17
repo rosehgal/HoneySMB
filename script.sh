@@ -5,6 +5,8 @@ cd bro-2.5 && ./configure
 cd bro-2.5 && make -j4
 cd bro-2.5 && sudo make install
 
+sudo /usr/local/bro/bin/broctl deploy
+
 sudo sh -c "sed -i 's+# @load policy/protocols/smb+@load policy/protocols/smb+g' /usr/local/bro/share/bro/site/local.bro"
 sudo sh -c "sed -i 's+# @load policy/protocols/smb+@load policy/protocols/smb+g' /usr/local/bro/spool/installed-scripts-do-not-touch/site/local.bro"
 

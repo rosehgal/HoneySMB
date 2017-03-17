@@ -21,8 +21,15 @@ then
   exit
 fi
 
-mkdir logs
-mkdir smbDrive
+if [ ! -d "logs" ]
+then
+  mkdir logs
+fi
+
+if [ ! -d "smbDrive" ]
+then
+    mkdir smbDrive
+fi
 
 echo -e "[*]Enter the IP to bind the server to[0.0.0.0.] \c";read server_ip;
 if [[ -z "${server_ip// }" ]];then server_ip="0.0.0.0" ;fi
@@ -39,5 +46,4 @@ then
 fi
 
 echo -e "[*]Setting up environment for extracting info from Log";
-
-dpkg 
+ 

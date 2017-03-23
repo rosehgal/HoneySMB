@@ -2,8 +2,10 @@ sudo apt-get install cmake make gcc g++ flex bison libpcap-dev libssl-dev python
 wget https://www.bro.org/downloads/bro-2.5.tar.gz
 tar -xvzf bro-2.5.tar.gz
 cd bro-2.5 && ./configure
-cd bro-2.5 && make -j4
-cd bro-2.5 && sudo make install
+make -j4
+sudo make install
+
+rm -rf bro-2.5.tar.gz bro-2.5/ 
 
 sudo /usr/local/bro/bin/broctl deploy
 

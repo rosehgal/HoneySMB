@@ -8,6 +8,7 @@ fi
 docker -v
 if [ $? -ne 0 ]
 then
+  apt install aptitude -y
   aptitude install docker.io -y
 else
   echo "[*] Docker Already Installed"

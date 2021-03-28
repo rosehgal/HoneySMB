@@ -1,4 +1,4 @@
-FROM ubuntu
+FROM ubuntu:18.04
 MAINTAINER Rohit Sehgal (rsehgal@iitk.ac.in)
 
 RUN apt-get update -y && apt-get install python2.7 -y
